@@ -1,1 +1,1 @@
-CFLAGS=-Wall -g -ledit
+CFLAGS=-Wall -g -ledit -lm
