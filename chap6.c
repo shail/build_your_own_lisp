@@ -15,11 +15,11 @@ int main(int argc, char** argv)
 
     /* Define the parsers */
     mpca_lang(MPCA_LANG_DEFAULT,
-    "                                                      \
-        number   : /-?[0-9]+/ ;                            \
-        operator : '+' | '-' | '*' | '/';                  \
-        expr     : <number> | '(' <operator> <expr>+ ')' ; \
-        lispy    : /^/ <operator> <expr>+ /$/ ;            \
+    "                                                                                       \
+        number   : /-?[0-9]+(\\.[0-9]+)?/;                                                  \
+        operator : '+' | '-' | '*' | '/' | '%' | /add/ | /sub/ | /mul/ | /div/ ;            \
+        expr     : <number> | '(' <operator> <expr>+ ')' ;                                  \
+        lispy    : /^/ <operator> <expr>+ /$/ ;                                             \
     ",
     Number, Operator, Expr, Lispy);
 
