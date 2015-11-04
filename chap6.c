@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <editline/readline.h>
 
 int num_leaves(mpc_ast_t* t)
@@ -34,7 +35,19 @@ int num_branches(mpc_ast_t* t)
 
 int max_children(mpc_ast_t* t)
 {
+    if (t->children_num < 1) {
+        return 0;
+    } else {
+        int branches = t->children_num;
 
+        for (int i = 0; i < t->children_num; i++) {
+            int child_branches = max_children(t->children[i]);
+            if (child_branches > branches) {
+              branches = child_branches;
+            }
+        }
+        return branches;
+    }
 }
 
 long eval_op(long x, char* op, long y)
@@ -44,6 +57,15 @@ long eval_op(long x, char* op, long y)
     if (strcmp(op, "-") == 0) { return x - y; }
     if (strcmp(op, "*") == 0) { return x * y; }
     if (strcmp(op, "/") == 0) { return x / y; }
+    if (strcmp(op, "%") == 0) { return x % y; }
+    if (strcmp(op, "^") == 0) { return pow(x, y); }
+    if (strcmp(op, "min") == 0) { return (x < y) ? x : y; }
+    if (strcmp(op, "max") == 0) { return (x > y) ? x : y; }
+    return 0;
+}
+
+long eval_negative(long x, char* op) {
+    if (strcmp(op, "-") == 0) { return x * -1; }
     return 0;
 }
 
@@ -62,6 +84,9 @@ long eval(mpc_ast_t* t)
 
     /* Iterate the remaining children and combining. */
     int i = 3;
+    if (t->children_num == i+1) {
+        x = eval_negative(x, op);
+    }
     while (strstr(t->children[i]->tag, "expr")) {
         x = eval_op(x, op, eval(t->children[i]));
         i++;
@@ -80,11 +105,11 @@ int main(int argc, char** argv)
 
     /* Define the parsers */
     mpca_lang(MPCA_LANG_DEFAULT,
-    "                                                                                       \
-        number   : /-?[0-9]+(\\.[0-9]+)?/;                                                  \
-        operator : '+' | '-' | '*' | '/' | '%' | /add/ | /sub/ | /mul/ | /div/ ;            \
-        expr     : <number> | '(' <operator> <expr>+ ')' ;                                  \
-        lispy    : /^/ <operator> <expr>+ /$/ ;                                             \
+    "                                                                                                      \
+        number   : /-?[0-9]+(\\.[0-9]+)?/;                                                                 \
+        operator : '+' | '-' | '*' | '/' | '%' | '^' | /min/ | /max/ | /add/ | /sub/ | /mul/ | /div/ ;     \
+        expr     : <number> | '(' <operator> <expr>+ ')' ;                                                 \
+        lispy    : /^/ <operator> <expr>+ /$/ ;                                                            \
     ",
     Number, Operator, Expr, Lispy);
 
