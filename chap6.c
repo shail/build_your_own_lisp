@@ -4,6 +4,39 @@
 #include <string.h>
 #include <editline/readline.h>
 
+int num_leaves(mpc_ast_t* t)
+{
+    if (t->children_num < 1) {
+        return 1;
+    } else {
+        int total = 0;
+
+        for (int i = 0; i < t->children_num; i++) {
+            total += num_leaves(t->children[i]);
+        }
+        return total;
+    }
+}
+
+int num_branches(mpc_ast_t* t)
+{
+    if (t->children_num < 1) {
+        return 0;
+    } else {
+        int total = t->children_num;
+
+        for (int i = 0; i < t->children_num; i++) {
+            total += num_branches(t->children[i]);
+        }
+        return total;
+    }
+}
+
+int max_children(mpc_ast_t* t)
+{
+
+}
+
 long eval_op(long x, char* op, long y)
 {
     /* Use operator string to see which operation to perform */
