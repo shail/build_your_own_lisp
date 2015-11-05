@@ -5,30 +5,40 @@
 #include <math.h>
 #include <editline/readline.h>
 
-typedef struct {
-    int type;
-    long num;
-    int err;
-} lval;
-
 /* Create Enumeration of Possible lval Types */
-enum name { LVAL_NUM, LVAL_ERR };
+typedef enum { LVAL_NUM, LVAL_DUB, LVAL_ERR } lval_type_t;
 
 /* Create Enumeration of Possible Error Types */
-enum { LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM };
+typedef enum { LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM } lval_type_e;
+
+typedef struct {
+    lval_type_t type;
+    union {
+        long num;
+        double doub;
+        lval_type_e err;
+    } val;
+} lval;
 
 /* Create a new number type lval */
 lval lval_num(long x) {
     lval v;
     v.type = LVAL_NUM;
-    v.num = x;
+    v.val.num = x;
+    return v;
+}
+
+lval lval_doub(double x) {
+    lval v;
+    v.type = LVAL_NUM;
+    v.val.doub = x;
     return v;
 }
 
 lval lval_err(int x) {
     lval v;
     v.type = LVAL_ERR;
-    v.err = x;
+    v.val.err = x;
     return v;
 }
 
@@ -36,18 +46,20 @@ void lval_print(lval v)
 {
     switch (v.type) {
         /* In the case the type is a number print it */
-        case LVAL_NUM: printf("%li", v.num); break;
+        case LVAL_NUM: printf("%li", v.val.num); break;
+
+        case LVAL_DUB: printf("%f", v.val.doub); break;
 
         /* In the case the type is an error */
         case LVAL_ERR:
         /* Check what type of error it is and then print it */
-            if (v.err == LERR_DIV_ZERO) {
+            if (v.val.err == LERR_DIV_ZERO) {
                 printf("Error: Division By Zero!");
             }
-            if (v.err == LERR_BAD_OP) {
+            if (v.val.err == LERR_BAD_OP) {
                 printf("Error: Invalid Operator!");
             }
-            if (v.err == LERR_BAD_NUM) {
+            if (v.val.err == LERR_BAD_NUM) {
                 printf("Error: Invalid Number!");
             }
         break;
@@ -56,29 +68,73 @@ void lval_print(lval v)
 
 void lval_println(lval v) { lval_print(v); putchar('\n'); }
 
+lval eval_num(lval x, char* op, lval y)
+{
+    long first_number = x.val.num;
+    long second_number = y.val.num;
+    /* Use operator string to see which operation to perform */
+    if (strcmp(op, "+") == 0) { return lval_num(first_number + second_number); }
+    if (strcmp(op, "-") == 0) { return lval_num(first_number - second_number); }
+    if (strcmp(op, "*") == 0) { return lval_num(first_number * second_number); }
+    if (strcmp(op, "/") == 0) {
+        return second_number == 0 ? lval_err(LERR_DIV_ZERO) : lval_num(first_number / second_number);
+        return lval_num(first_number / second_number);
+    }
+    if (strcmp(op, "%") == 0) { return lval_num(first_number % second_number); }
+    if (strcmp(op, "^") == 0) { return lval_num(pow(first_number, second_number)); }
+    if (strcmp(op, "min") == 0) { return (first_number < second_number) ? lval_num(first_number) : lval_num(second_number); }
+    if (strcmp(op, "max") == 0) { return (first_number > second_number) ? lval_num(first_number) : lval_num(second_number); }
+    return lval_err(LERR_BAD_OP);
+}
+
+lval eval_dub(lval x, char* op, lval y)
+{
+    double first_number = x.val.doub;
+    double second_number = y.val.doub;
+    /* Use operator string to see which operation to perform */
+    if (strcmp(op, "+") == 0) { return lval_num(first_number + second_number); }
+    if (strcmp(op, "-") == 0) { return lval_num(first_number - second_number); }
+    if (strcmp(op, "*") == 0) { return lval_num(first_number * second_number); }
+    if (strcmp(op, "/") == 0) {
+        return second_number == 0 ? lval_err(LERR_DIV_ZERO) : lval_num(first_number / second_number);
+        return lval_num(first_number / second_number);
+    }
+    if (strcmp(op, "%") == 0) { return lval_num(fmod(first_number, second_number)); }
+    if (strcmp(op, "^") == 0) { return lval_num(pow(first_number, second_number)); }
+    if (strcmp(op, "min") == 0) { return (first_number < second_number) ? lval_num(first_number) : lval_num(second_number); }
+    if (strcmp(op, "max") == 0) { return (first_number > second_number) ? lval_num(first_number) : lval_num(second_number); }
+    return lval_err(LERR_BAD_OP);
+}
+
 lval eval_op(lval x, char* op, lval y)
 {
     /* If either value is an error return it */
     if (x.type == LVAL_ERR) { return x; }
     if (y.type == LVAL_ERR) { return y; }
-    /* Use operator string to see which operation to perform */
-    if (strcmp(op, "+") == 0) { return lval_num(x.num + y.num); }
-    if (strcmp(op, "-") == 0) { return lval_num(x.num - y.num); }
-    if (strcmp(op, "*") == 0) { return lval_num(x.num * y.num); }
-    if (strcmp(op, "/") == 0) {
-        return y.num == 0 ? lval_err(LERR_DIV_ZERO) : lval_num(x.num / y.num);
-        return lval_num(x.num / y.num);
+
+    if ((x.type == LVAL_DUB) && (y.type == LVAL_NUM)) {
+        y = lval_doub(y.val.num);
     }
-    if (strcmp(op, "%") == 0) { return lval_num(x.num % y.num); }
-    if (strcmp(op, "^") == 0) { return lval_num(pow(x.num, y.num)); }
-    if (strcmp(op, "min") == 0) { return (x.num < y.num) ? lval_num(x.num) : lval_num(y.num); }
-    if (strcmp(op, "max") == 0) { return (x.num > y.num) ? lval_num(x.num) : lval_num(y.num); }
+
+    if ((x.type == LVAL_NUM) && (y.type == LVAL_DUB)) {
+        x = lval_doub(x.val.num);
+    }
+
+    if ((x.type == LVAL_NUM) && (y.type == LVAL_NUM)) {
+        return eval_num(x, op, y);
+    } else if ((x.type == LVAL_DUB) && (y.type == LVAL_NUM)) {
+        return eval_dub(x, op, y);
+    }
     return lval_err(LERR_BAD_OP);
 }
 
 lval eval_negative(lval x, char* op) {
-    if (strcmp(op, "-") == 0) { return lval_num(x.num * -1L); }
-    return lval_num(0);
+    if (x.type == LVAL_NUM) {
+        if (strcmp(op, "-") == 0) { return lval_num(x.val.num * -1); }
+    } else {
+        if (strcmp(op, "-") == 0) { return lval_doub(x.val.doub * -1); }
+    };
+    return lval_num(LERR_BAD_OP);
 }
 
 lval eval(mpc_ast_t* t)
@@ -89,6 +145,13 @@ lval eval(mpc_ast_t* t)
         errno = 0;
         long x = strtol(t->contents, NULL, 10);
         return errno != ERANGE ? lval_num(x) : lval_err(LERR_BAD_NUM);
+    }
+
+    if (strstr(t->tag, "double")) {
+        /* Check if there is some error in conversion */
+        errno = 0;
+        double x = strtod(t->contents, NULL);
+        return errno != ERANGE ? lval_doub(x) : lval_err(LERR_BAD_NUM);
     }
 
     /* The operator is always second child. */
@@ -114,6 +177,7 @@ int main(int argc, char** argv)
 {
     /* Create some parsers */
     mpc_parser_t* Number = mpc_new("number");
+    mpc_parser_t* Double = mpc_new("double");
     mpc_parser_t* Operator = mpc_new("operator");
     mpc_parser_t* Expr = mpc_new("expr");
     mpc_parser_t* Lispy = mpc_new("lispy");
@@ -121,12 +185,13 @@ int main(int argc, char** argv)
     /* Define the parsers */
     mpca_lang(MPCA_LANG_DEFAULT,
     "                                                                                                      \
-        number   : /-?[0-9]+(\\.[0-9]+)?/;                                                                 \
+        number   : /-?[0-9]+/;                                                                             \
+        double   : /-?[0-9]+(\\.[0-9]+)?/;                                                                 \
         operator : '+' | '-' | '*' | '/' | '%' | '^' | /min/ | /max/ | /add/ | /sub/ | /mul/ | /div/ ;     \
-        expr     : <number> | '(' <operator> <expr>+ ')' ;                                                 \
+        expr     : <number> | <double> | '(' <operator> <expr>+ ')' ;                                      \
         lispy    : /^/ <operator> <expr>+ /$/ ;                                                            \
     ",
-    Number, Operator, Expr, Lispy);
+    Number, Double, Operator, Expr, Lispy);
 
     puts("Sammy Version 0.0.0.0.1");
     puts("Press Ctrl+c to Exit\n");
@@ -152,7 +217,7 @@ int main(int argc, char** argv)
         free(input);
     }
     /* Undefine and delete our parsers */
-    mpc_cleanup(4, Number, Operator, Expr, Lispy);
+    mpc_cleanup(5, Number, Double, Operator, Expr, Lispy);
     return 0;
 }
 
