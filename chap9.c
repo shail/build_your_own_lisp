@@ -4,6 +4,7 @@
 #include <string.h>
 #include <math.h>
 #include <editline/readline.h>
+ /* Get started */
 
 /* Create Enumeration of Possible lval Types */
 typedef enum { LVAL_NUM, LVAL_DUB, LVAL_ERR } lval_type_t;
