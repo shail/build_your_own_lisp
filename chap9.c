@@ -6,7 +6,7 @@
 #include <editline/readline.h>
 
 /* Create Enumeration of Possible lval Types */
-typedef enum { LVAL_NUM, LVAL_DUB, LVAL_ERR } lval_type_t;
+typedef enum { LVAL_NUM, LVAL_DUB, LVAL_SYM, LVAL_SEXPR, LVAL_ERR } lval_type_t;
 
 /* Create Enumeration of Possible Error Types */
 typedef enum { LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM } lval_type_e;
