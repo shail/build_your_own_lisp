@@ -178,7 +178,8 @@ int main(int argc, char** argv)
     /* Create some parsers */
     mpc_parser_t* Number = mpc_new("number");
     mpc_parser_t* Double = mpc_new("double");
-    mpc_parser_t* Operator = mpc_new("operator");
+    mpc_parser_t* Symbol = mpc_new("symbol");
+    mpc_parser_t* Sexpr = mpc_new("sexpr");
     mpc_parser_t* Expr = mpc_new("expr");
     mpc_parser_t* Lispy = mpc_new("lispy");
 
@@ -187,11 +188,12 @@ int main(int argc, char** argv)
     "                                                                                                      \
         number   : /-?[0-9]+/;                                                                             \
         double   : /-?[0-9]+(\\.[0-9]+)?/;                                                                 \
-        operator : '+' | '-' | '*' | '/' | '%' | '^' | /min/ | /max/ | /add/ | /sub/ | /mul/ | /div/ ;     \
-        expr     : <number> | <double> | '(' <operator> <expr>+ ')' ;                                      \
-        lispy    : /^/ <operator> <expr>+ /$/ ;                                                            \
+        symbol   : '+' | '-' | '*' | '/' | '%' | '^' | /min/ | /max/ | /add/ | /sub/ | /mul/ | /div/ ;     \
+        sexpr    : '(' <expr>* ')' ;                                                                       \
+        expr     : <number> | <double> | <symbol> | <sexpr> ;                                              \
+        lispy    : /^/ <expr>+ /$/ ;                                                                       \
     ",
-    Number, Double, Operator, Expr, Lispy);
+    Number, Double, Symbol, Sexpr, Expr, Lispy);
 
     puts("Sammy Version 0.0.0.0.1");
     puts("Press Ctrl+c to Exit\n");
@@ -217,6 +219,39 @@ int main(int argc, char** argv)
         free(input);
     }
     /* Undefine and delete our parsers */
-    mpc_cleanup(5, Number, Double, Operator, Expr, Lispy);
+    mpc_cleanup(6, Number, Double, Symbol, Sexpr, Expr, Lispy);
     return 0;
 }
+
+/* POINTERS
+ *
+ * One reason we need pointers is because of how function calling works. When you call a function in C, you 
+ * pass by value, which means you send a copy of that object. So if you are passing around big structs then
+ * you will start to use a lot of memory to store these objects. A second problem is when we define a struct,
+ * it is always a fixed size, has a limited number of fields and each of these fields must be a struct which
+ * itself is limited in size. If you want to call a function with a list of things you need to use pointers.
+ * Rather than copying the data itself to a function, we instead copy a number representing the index at
+ * where this data starts, the function being called can look up any amount of data it wants. By using
+ * addresses instead of actual data, we can allow a function to access and modify some location in memory
+ * without having to copy any data. A pointer is just a number. A number representing the starting index of
+ * some data in memory. If we keep track of number of bytes needed, we can create variable sized data
+ * structures. We declare pointer types by suffixing existing ones with the * character. To create a pointer
+ * to some data, we need to get its index, or address. We use the address operator '&'. Dereferencing a
+ * pointer, we use the '*' operator on the left-hand side of a variable. To get the data at the field of a
+ * pointer to a struct we use the arrow.
+ *
+ * THE STACK
+ *
+ * The stack is the memory where your program lives. It is where all of your temporary variables and data
+ * structures exist as you manipulate and edit them. Every time you call a function a new area of the stack
+ * is put aside for it to use. When the function is done using this area, it is unallocated and free for use.
+ *
+ * THE HEAP
+ *
+ * The heap is a section of memory put aside for storage of objects with a longer lifespan. Memory in this
+ * area has to be manually allocated and deallocated. To allocate new memory we use the `malloc` function. The
+ * function takes as input the number of bytes required, and returns back a pointer to a new block of memory
+ * with that many bytes set aside. When done with the memory, we use the `free` function passing it the
+ * pointer we received from the `malloc` function. Using the heap you have to remember to call free otherwise
+ * the program will continuously allocate more and more memory (a memory leak).
+ */
