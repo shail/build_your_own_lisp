@@ -220,12 +220,3 @@ int main(int argc, char** argv)
     mpc_cleanup(5, Number, Double, Operator, Expr, Lispy);
     return 0;
 }
-
-/* Union data types -- allows you to store different data types in the same memory allocation. You can define
- * a union with many members, but only one member can contain a value at any given time. Unions provide an
- * efficient way of using the same memory location multiple times. Unions are useful when you want to store
- * something that could be one of several types. A struct, has a separate memory location for each of its
- * elements and can all be used at once. Also a struct allocates chunks of memory for each element, while a
- * union only allocates one chunk of memory.
-*/
-
