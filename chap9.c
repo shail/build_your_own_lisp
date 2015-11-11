@@ -8,9 +8,6 @@
 /* Create Enumeration of Possible lval Types */
 typedef enum { LVAL_NUM, LVAL_DUB, LVAL_SYM, LVAL_SEXPR, LVAL_ERR } lval_type_t;
 
-/* Create Enumeration of Possible Error Types */
-typedef enum { LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM } lval_type_e;
-
 /* S-expressions are variable length lists. We create a pointer field cell which points to a locatino where
  * we store a list of lval*. Therefore this is a double pointer list, where we have a pointer to lval
  * pointers. We also have to keep track of how many lval pointers are in the list. If we name a struct
@@ -57,7 +54,7 @@ lval* lval_err(char* m) {
 lval* lval_sym(char* s) {
     lval* v = malloc(sizeof(lval));
     v->type = LVAL_SYM;
-    v->err = malloc(strlen(s) + 1);
+    v->sym = malloc(strlen(s) + 1);
     strcpy(v->sym, s);
     return v;
 }
@@ -100,34 +97,6 @@ lval* lval_add(lval* v, lval* x) {
     return v;
 }
 
-void lval_print(lval* v);
-
-void lval_expr_print(lval* v, char open, char close) {
-    putchar(open);
-    for (int i = 0; i < v->count; i++) {
-        lval_print(v->cell[i]);
-
-        if (i != (v->count-1)) {
-            putchar(' ');
-        }
-    }
-}
-
-void lval_print(lval* v)
-{
-    switch (v->type) {
-        case LVAL_NUM: printf("%li", v->val.num); break;
-        case LVAL_DUB: printf("%f", v->val.doub); break;
-        case LVAL_SYM: printf("%s", v->sym); break;
-        case LVAL_SEXPR: lval_expr_print(v, '(', ')'); break;
-        case LVAL_ERR: printf("%s", v->err); break;
-        break;
-    }
-}
-
-void lval_println(lval* v) { lval_print(v); putchar('\n'); }
-lval* lval_eval(lval* v);
-
 lval* lval_pop(lval* v, int i) {
     /* Find the item at "i" */
     lval* x = v->cell[i];
@@ -149,6 +118,34 @@ lval* lval_take(lval* v, int i) {
     lval_del(v);
     return(x);
 }
+
+void lval_print(lval* v);
+
+void lval_expr_print(lval* v, char open, char close) {
+    putchar(open);
+    for (int i = 0; i < v->count; i++) {
+        lval_print(v->cell[i]);
+
+        if (i != (v->count-1)) {
+            putchar(' ');
+        }
+    }
+    putchar(close);
+}
+
+void lval_print(lval* v)
+{
+    switch (v->type) {
+        case LVAL_NUM: printf("%li", v->val.num); break;
+        case LVAL_DUB: printf("%f", v->val.doub); break;
+        case LVAL_SYM: printf("%s", v->sym); break;
+        case LVAL_SEXPR: lval_expr_print(v, '(', ')'); break;
+        case LVAL_ERR: printf("%s", v->err); break;
+        break;
+    }
+}
+
+void lval_println(lval* v) { lval_print(v); putchar('\n'); }
 
 lval* builtin_op(lval* a, char* op) {
     /* Ensure all arguments are numbers */
@@ -175,7 +172,7 @@ lval* builtin_op(lval* a, char* op) {
         if (strcmp(op, "+") == 0) { x->val.num += y->val.num; }
         if (strcmp(op, "-") == 0) { x->val.num -= y->val.num; }
         if (strcmp(op, "*") == 0) { x->val.num *= y->val.num; }
-        if (strcmp(op, "/") == 0) { 
+        if (strcmp(op, "/") == 0) {
             if (y->val.num == 0) {
                 lval_del(x); lval_del(y);
                 x = lval_err("Division By Zero!"); break;
@@ -197,11 +194,11 @@ lval* lval_eval_sexpr(lval* v) {
 
     /* Error Checking */
     for (int i = 0; i < v->count; i++) {
-        if (v->cell[i]->type == LVAL_ERR) { return lval_take(v, i); } 
+        if (v->cell[i]->type == LVAL_ERR) { return lval_take(v, i); }
     }
 
     /* Empty Expression */
-    if (v->count == 1) { return lval_take(v, 0); }
+    if (v->count == 0) { return v; }
 
     /* Single Expression */
     if (v->count == 1) { return lval_take(v, 0); }
@@ -234,7 +231,6 @@ lval* lval_read_num(mpc_ast_t* t) {
 
 lval* lval_read(mpc_ast_t* t) {
     if (strstr(t->tag, "number")) { return lval_read_num(t); }
-    if (strstr(t->tag, "number")) { return lval_read_doub(t); }
     if (strstr(t->tag, "symbol")) { return lval_sym(t->contents); }
 
     /* If root (>) or sexpr then create empty list */
@@ -249,6 +245,7 @@ lval* lval_read(mpc_ast_t* t) {
         if (strcmp(t->children[i]->contents, "}") == 0) { continue; }
         if (strcmp(t->children[i]->contents, "{") == 0) { continue; }
         if (strcmp(t->children[i]->tag, "regex") == 0) { continue; }
+        x = lval_add(x, lval_read(t->children[i]));
     }
     return x;
 }
