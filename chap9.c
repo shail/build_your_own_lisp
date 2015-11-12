@@ -179,6 +179,7 @@ lval* builtin_op(lval* a, char* op) {
             }
             x->val.num /= y->val.num;
         }
+        if (strcmp(op, "%") == 0) { x->val.num %= y->val.num; }
         lval_del(y);
     }
     lval_del(a); return x;
@@ -265,7 +266,7 @@ int main(int argc, char** argv)
     "                                                                                                      \
         number   : /-?[0-9]+/;                                                                             \
         double   : /-?[0-9]+(\\.[0-9]+)?/;                                                                 \
-        symbol   : '+' | '-' | '*' | '/' | '%' | '^' | /min/ | /max/ | /add/ | /sub/ | /mul/ | /div/ ;     \
+        symbol   : '+' | '-' | '*' | '/' | '%' ;                                                           \
         sexpr    : '(' <expr>* ')' ;                                                                       \
         expr     : <number> | <double> | <symbol> | <sexpr> ;                                              \
         lispy    : /^/ <expr>+ /$/ ;                                                                       \
@@ -332,4 +333,28 @@ int main(int argc, char** argv)
  * with that many bytes set aside. When done with the memory, we use the `free` function passing it the
  * pointer we received from the `malloc` function. Using the heap you have to remember to call free otherwise
  * the program will continuously allocate more and more memory (a memory leak).
+ */
+
+/* EXTRA CREDIT
+ * Give an example of a variable in our program that lives on The Stack.
+ * long x = strtol(t->contents, NULL, 10); -- line 228 is on the Stack
+ *
+ * Give an example of a variable in our program that points to The Heap.
+ * lval v* in lval_num is on the Heap since the memory is allocated manually.
+ *
+ * What does the strcpy function do?
+ * Copies the string pointed to by the src, including the null terminator, to the buffer pointed to by dest.
+ * The destination string must be large enough to receive the copy or there will be a buffer overrun.
+ *
+ * What does the realloc function do?
+ * Resize the memory block pointed to by the ptr argument that was previously allocated with malloc or calloc,
+ * providing the pointer to the previously allocated memory block and then the new size, return value is
+ * a pointer to the newly allocated memory.
+ *
+ * What does the memmove function do?
+ * Copies n bytes from memory area src to memory area dest, memory areas may overlap, copying takes place
+ * as though the bytes in src are first copied to a temporary array that doesn't overlap with src or dest,
+ * and the bytes are then copied from the temporary array to dest. Supply two pointers and n number of bytes
+ * to be copied. The function returns a pointer to the destination. This is safer than memcpy for overlapping
+ * memory because it does a bit more work to make sure it handles overlapping memory.
  */
