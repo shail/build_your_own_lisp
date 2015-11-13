@@ -84,12 +84,6 @@ void lval_del(lval* v) {
     free(v);
 }
 
-lval* lval_read_doub(mpc_ast_t* t) {
-   errno = 0;
-   double x = strtod(t->contents, NULL);
-   return errno != ERANGE ? lval_doub(x) : lval_err("invalid number");
-}
-
 lval* lval_add(lval* v, lval* x) {
     v->count++;
     v->cell = realloc(v->cell, sizeof(lval*) * v->count);
@@ -150,7 +144,7 @@ void lval_println(lval* v) { lval_print(v); putchar('\n'); }
 lval* builtin_op(lval* a, char* op) {
     /* Ensure all arguments are numbers */
     for (int i = 0; i < a->count; i++) {
-        if (a->cell[i]->type != LVAL_NUM) {
+        if (a->cell[i]->type != LVAL_NUM && a->cell[i]->type != LVAL_DUB) {
           lval_del(a);
           return lval_err("Cannot operate on non-number!");
         }
@@ -168,7 +162,17 @@ lval* builtin_op(lval* a, char* op) {
     while (a->count > 0) {
         /* Pop the next element */
         lval* y = lval_pop(a, 0);
-
+        printf("%d\n", x->type);
+        printf("%d\n", y->type);
+        if (x->type == LVAL_NUM && y->type == LVAL_DUB) {
+            double val = (double)x->val.num;
+            lval_del(x);
+            lval* x = lval_doub(val);
+        } else if (x->type == LVAL_DUB && y->type == LVAL_NUM) {
+            double val = (double)y->val.num;
+            lval_del(y);
+            lval* y = lval_doub(val);
+        }
         if (strcmp(op, "+") == 0) { x->val.num += y->val.num; }
         if (strcmp(op, "-") == 0) { x->val.num -= y->val.num; }
         if (strcmp(op, "*") == 0) { x->val.num *= y->val.num; }
@@ -230,7 +234,16 @@ lval* lval_read_num(mpc_ast_t* t) {
    return errno != ERANGE ? lval_num(x) : lval_err("invalid number");
 }
 
+lval* lval_read_doub(mpc_ast_t* t) {
+   errno = 0;
+   double x = strtod(t->contents, NULL);
+   return errno != ERANGE ? lval_doub(x) : lval_err("invalid number");
+}
+
+
 lval* lval_read(mpc_ast_t* t) {
+    printf("%s", t->tag);
+    if (strstr(t->tag, "double")) { return lval_read_doub(t); }
     if (strstr(t->tag, "number")) { return lval_read_num(t); }
     if (strstr(t->tag, "symbol")) { return lval_sym(t->contents); }
 
@@ -268,7 +281,7 @@ int main(int argc, char** argv)
         double   : /-?[0-9]+(\\.[0-9]+)?/;                                                                 \
         symbol   : '+' | '-' | '*' | '/' | '%' ;                                                           \
         sexpr    : '(' <expr>* ')' ;                                                                       \
-        expr     : <number> | <double> | <symbol> | <sexpr> ;                                              \
+        expr     : <double> | <number> | <symbol> | <sexpr> ;                                              \
         lispy    : /^/ <expr>+ /$/ ;                                                                       \
     ",
     Number, Double, Symbol, Sexpr, Expr, Lispy);
