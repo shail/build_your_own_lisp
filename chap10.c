@@ -222,7 +222,7 @@ int main(int argc, char** argv)
 {
     /* Create some parsers */
     mpc_parser_t* Number = mpc_new("number");
-    mpc_parser_t* Double = mpc_new("double");
+    mpc_parser_t* Qexpr = mpc_new("qexpr");
     mpc_parser_t* Symbol = mpc_new("symbol");
     mpc_parser_t* Sexpr = mpc_new("sexpr");
     mpc_parser_t* Expr = mpc_new("expr");
@@ -232,13 +232,13 @@ int main(int argc, char** argv)
     mpca_lang(MPCA_LANG_DEFAULT,
     "                                                                                                      \
         number   : /-?[0-9]+/;                                                                             \
-        double   : /-?[0-9]+(\\.[0-9]+)?/;                                                                 \
+        qexpr    : '{' <expr>* '}' ;                                                                       \
         symbol   : '+' | '-' | '*' | '/' | '%' ;                                                           \
         sexpr    : '(' <expr>* ')' ;                                                                       \
-        expr     : <number> | <double> | <symbol> | <sexpr> ;                                              \
+        expr     : <number> | <symbol> | <sexpr> ;                                              \
         lispy    : /^/ <expr>+ /$/ ;                                                                       \
     ",
-    Number, Double, Symbol, Sexpr, Expr, Lispy);
+    Number, Qexpr, Symbol, Sexpr, Expr, Lispy);
 
     puts("Sammy Version 0.0.0.0.1");
     puts("Press Ctrl+c to Exit\n");
@@ -265,7 +265,7 @@ int main(int argc, char** argv)
         free(input);
     }
     /* Undefine and delete our parsers */
-    mpc_cleanup(6, Number, Double, Symbol, Sexpr, Expr, Lispy);
+    mpc_cleanup(6, Number, Qexpr, Symbol, Sexpr, Expr, Lispy);
     return 0;
 }
 
