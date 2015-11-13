@@ -1,18 +1,11 @@
 #include "mpc.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
 #include <editline/readline.h>
 
-typedef enum { LVAL_ERR, LVAL_NUM, LVAL_SYM, LVAL_SEXPR, LVAL_QEXPR } lval_type_t;
+enum { LVAL_ERR, LVAL_NUM, LVAL_SYM, LVAL_SEXPR, LVAL_QEXPR };
 
 typedef struct lval {
-    lval_type_t type;
-    union {
-        long num;
-        double doub;
-    } val;
+    int type;
+    long num;
     char *err;
     char *sym;
     int count;
@@ -22,7 +15,7 @@ typedef struct lval {
 lval* lval_num(long x) {
     lval* v = malloc(sizeof(lval));
     v->type = LVAL_NUM;
-    v->val.num = x;
+    v->num = x;
     return v;
 }
 
@@ -50,21 +43,11 @@ lval* lval_sexpr(void) {
     return v;
 }
 
-lval* lval_qexpr(void) {
-    lval* v = malloc(sizeof(lval));
-    v->type = LVAL_QEXPR;
-    v->count = 0;
-    v->cell = NULL;
-    return v;
-}
-
 void lval_del(lval* v) {
     switch (v->type) {
         case LVAL_NUM: break;
         case LVAL_ERR: free(v->err); break;
         case LVAL_SYM: free(v->sym); break;
-        /* If Qexpr or Sexpr then delete all elements inside */
-        case LVAL_QEXPR:
         case LVAL_SEXPR:
           for(int i = 0; i < v->count; i++) {
               lval_del(v->cell[i]);
@@ -114,15 +97,12 @@ void lval_expr_print(lval* v, char open, char close) {
     putchar(close);
 }
 
-void lval_print(lval* v)
-{
+void lval_print(lval* v) {
     switch (v->type) {
-        case LVAL_NUM: printf("%li", v->val.num); break;
+        case LVAL_NUM: printf("%li", v->num); break;
         case LVAL_SYM: printf("%s", v->sym); break;
-        case LVAL_SEXPR: lval_expr_print(v, '(', ')'); break;
-        case LVAL_QEXPR: lval_expr_print(v, '{', '}'); break;
         case LVAL_ERR: printf("%s", v->err); break;
-        break;
+        case LVAL_SEXPR: lval_expr_print(v, '(', ')'); break;
     }
 }
 
@@ -139,23 +119,22 @@ lval* builtin_op(lval* a, char* op) {
     lval* x = lval_pop(a, 0);
 
     if ((strcmp(op, "-") == 0) && a->count == 0) {
-        x->val.num = -x->val.num;
+        x->num = -x->num;
     }
 
     while (a->count > 0) {
         lval* y = lval_pop(a, 0);
 
-        if (strcmp(op, "+") == 0) { x->val.num += y->val.num; }
-        if (strcmp(op, "-") == 0) { x->val.num -= y->val.num; }
-        if (strcmp(op, "*") == 0) { x->val.num *= y->val.num; }
+        if (strcmp(op, "+") == 0) { x->num += y->num; }
+        if (strcmp(op, "-") == 0) { x->num -= y->num; }
+        if (strcmp(op, "*") == 0) { x->num *= y->num; }
         if (strcmp(op, "/") == 0) {
-            if (y->val.num == 0) {
+            if (y->num == 0) {
                 lval_del(x); lval_del(y);
                 x = lval_err("Division By Zero!"); break;
             }
-            x->val.num /= y->val.num;
+            x->num /= y->num;
         }
-        if (strcmp(op, "%") == 0) { x->val.num %= y->val.num; }
         lval_del(y);
     }
     lval_del(a); return x;
@@ -204,8 +183,7 @@ lval* lval_read(mpc_ast_t* t) {
 
     lval* x = NULL;
     if (strcmp(t->tag, ">") == 0) { x = lval_sexpr(); }
-    if (strcmp(t->tag, "sexpr") == 0) { x = lval_sexpr(); }
-    if (strcmp(t->tag, "qexpr") == 0) { x = lval_qexpr(); }
+    if (strstr(t->tag, "sexpr"))  { x = lval_sexpr(); }
 
     for (int i = 0; i< t->children_num; i++) {
         if (strcmp(t->children[i]->contents, "(") == 0) { continue; }
@@ -222,7 +200,6 @@ int main(int argc, char** argv)
 {
     /* Create some parsers */
     mpc_parser_t* Number = mpc_new("number");
-    mpc_parser_t* Qexpr = mpc_new("qexpr");
     mpc_parser_t* Symbol = mpc_new("symbol");
     mpc_parser_t* Sexpr = mpc_new("sexpr");
     mpc_parser_t* Expr = mpc_new("expr");
@@ -232,20 +209,18 @@ int main(int argc, char** argv)
     mpca_lang(MPCA_LANG_DEFAULT,
     "                                                                                                      \
         number   : /-?[0-9]+/;                                                                             \
-        qexpr    : '{' <expr>* '}' ;                                                                       \
         symbol   : '+' | '-' | '*' | '/' | '%' ;                                                           \
         sexpr    : '(' <expr>* ')' ;                                                                       \
         expr     : <number> | <symbol> | <sexpr> ;                                              \
-        lispy    : /^/ <expr>+ /$/ ;                                                                       \
+        lispy    : /^/ <expr>* /$/ ;                                                                       \
     ",
-    Number, Qexpr, Symbol, Sexpr, Expr, Lispy);
+    Number, Symbol, Sexpr, Expr, Lispy);
 
     puts("Sammy Version 0.0.0.0.1");
     puts("Press Ctrl+c to Exit\n");
 
     while (1) {
         char *input = readline("sammy> ");
-
         add_history(input);
 
         /* Attempt to parse user input */
@@ -265,7 +240,7 @@ int main(int argc, char** argv)
         free(input);
     }
     /* Undefine and delete our parsers */
-    mpc_cleanup(6, Number, Qexpr, Symbol, Sexpr, Expr, Lispy);
+    mpc_cleanup(5, Number, Symbol, Sexpr, Expr, Lispy);
     return 0;
 }
 
