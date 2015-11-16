@@ -227,7 +227,7 @@ lval* builtin_cons(lval *a) {
     lval* v = lval_qexpr();
     lval* x = lval_pop(a, 0);
     lval* y = lval_pop(a, 0);
-    
+
     v = lval_add(v, x);
     while (y->count) {
         v = lval_add(v, lval_pop(y, 0));
@@ -238,6 +238,21 @@ lval* builtin_cons(lval *a) {
     return v;
 }
 
+lval* builtin_len(lval *a) {
+    LASSERT(a, (a->count == 1), "Function 'len' passed incorrect number of arguments!");
+    LASSERT(a, (a->cell[0]->type == LVAL_QEXPR), "Function 'len' passed incorrect type!");
+
+    lval* counter = lval_num(0);
+    lval* x = lval_take(a, 0);
+    counter->num = x->count;
+
+    while (x->count) {
+        lval_del(lval_pop(x, 0));
+    }
+
+    return counter;
+}
+
 
 lval* builtin(lval* a, char* func) {
     if (strcmp("list", func) == 0) { return builtin_list(a); }
@@ -245,6 +260,7 @@ lval* builtin(lval* a, char* func) {
     if (strcmp("tail", func) == 0) { return builtin_tail(a); }
     if (strcmp("join", func) == 0) { return builtin_join(a); }
     if (strcmp("cons", func) == 0) { return builtin_cons(a); }
+    if (strcmp("len", func) == 0) { return builtin_len(a); }
     if (strcmp("eval", func) == 0) { return builtin_eval(a); }
     if (strstr("+-/*", func)) { return builtin_op(a, func); }
     lval_del(a);
@@ -320,8 +336,8 @@ int main(int argc, char** argv)
     mpca_lang(MPCA_LANG_DEFAULT,
     "                                                                                                      \
         number   : /-?[0-9]+/;                                                                             \
-        symbol   : \"list\" | \"head\" | \"tail\" | \"eval\" | \"join\" | \"cons\" | '+' | '-' | '*'       \
-                   | '/' | '%' ;                                                                           \
+        symbol   : \"len\" | \"list\" | \"head\" | \"tail\" | \"eval\" | \"join\"                          \
+                   | \"cons\" | '+' | '-' | '*' | '/' | '%' ;                                              \
         sexpr    : '(' <expr>* ')' ;                                                                       \
         qexpr    : '{' <expr>* '}' ;                                                                       \
         expr     : <number> | <symbol> | <sexpr> | <qexpr> ;                                               \
