@@ -281,6 +281,18 @@ void lenv_put(lenv* e, lval* k, lval* v) {
   strcpy(e->syms[e->count-1], k->sym);
 }
 
+void lenv_print_val(char* sym, lval* v) {
+    printf("%s:\t", sym);
+    lval_print(v);
+    printf("\n");
+}
+
+void lenv_print(lenv* e) {
+    for (int i = 0; i < e->count; i++) {
+        lenv_print_val(e->syms[i], e->vals[i]);
+    }
+}
+
 /* Builtins */
 
 #define LASSERT(args, cond, fmt, ...) \
@@ -434,6 +446,14 @@ lval* builtin_def(lenv* e, lval* a) {
   return lval_sexpr();
 }
 
+lval* builtin_env_list(lenv* e, lval* a) {
+    LASSERT_NUM("env_list", a, 1);
+    LASSERT_TYPE("env_list", a, 0, LVAL_QEXPR);
+
+    lenv_print(e);
+    return lval_sexpr();
+}
+
 void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
   lval* k = lval_sym(name);
   lval* v = lval_fun(func);
@@ -457,6 +477,8 @@ void lenv_add_builtins(lenv* e) {
   lenv_add_builtin(e, "-", builtin_sub);
   lenv_add_builtin(e, "*", builtin_mul);
   lenv_add_builtin(e, "/", builtin_div);
+
+  lenv_add_builtin(e, "env_list", builtin_env_list);
 }
 
 /* Evaluation */
