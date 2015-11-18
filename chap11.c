@@ -404,6 +404,25 @@ lval* builtin_div(lenv* e, lval* a) {
   return builtin_op(e, a, "/");
 }
 
+lval* builtin_env_list(lenv* e, lval* a) {
+  lval* x = malloc(sizeof(lval));
+  x->sym = malloc(sizeof(char*) * e->count);
+  /* Iterate through the environment to print all the variables */
+  for (int i = 0; i < e->count; i++) {
+      lval_add(x, lval_sym(e->syms[i])); 
+  }
+  return x;
+  /* If no existing entry found allocate space for new entry */
+  e->count++;
+  e->vals = realloc(e->vals, sizeof(lval*) * e->count);
+  e->syms = realloc(e->syms, sizeof(char*) * e->count);
+
+  /* Copy contents of lval and symbol string into new location */
+  e->vals[e->count-1] = lval_copy(v);
+  e->syms[e->count-1] = malloc(strlen(k->sym)+1);
+  strcpy(e->syms[e->count-1], k->sym);
+}
+
 lval* builtin_def(lenv* e, lval* a) {
 
   LASSERT_TYPE("def", a, 0, LVAL_QEXPR);
@@ -457,6 +476,9 @@ void lenv_add_builtins(lenv* e) {
   lenv_add_builtin(e, "-", builtin_sub);
   lenv_add_builtin(e, "*", builtin_mul);
   lenv_add_builtin(e, "/", builtin_div);
+
+  /* Environment Functions */
+  lenv_add_builtin(e, "env_list", builtin_env_list);
 }
 
 /* Evaluation */
@@ -553,7 +575,7 @@ int main(int argc, char** argv) {
     ",
     Number, Symbol, Sexpr, Qexpr, Expr, Lispy);
 
-  puts("Lispy Version 0.0.0.0.7");
+  puts("Sammy Version 0.0.0.0.7");
   puts("Press Ctrl+c to Exit\n");
 
   lenv* e = lenv_new();
@@ -561,7 +583,7 @@ int main(int argc, char** argv) {
 
   while (1) {
 
-    char* input = readline("lispy> ");
+    char* input = readline("sammy> ");
     add_history(input);
 
     mpc_result_t r;
