@@ -454,6 +454,13 @@ lval* builtin_env_list(lenv* e, lval* a) {
     return lval_sexpr();
 }
 
+lval* builtin_exit(lenv* e, lval* a) {
+    lval* x = lval_take(a, 0);
+    lval* result = lval_eval(e, x);
+    printf("Later gator\n");
+    exit(result->num);
+}
+
 void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
   lval* k = lval_sym(name);
   lval* v = lval_fun(func);
@@ -479,6 +486,7 @@ void lenv_add_builtins(lenv* e) {
   lenv_add_builtin(e, "/", builtin_div);
 
   lenv_add_builtin(e, "env_list", builtin_env_list);
+  lenv_add_builtin(e, "exit", builtin_exit);
 }
 
 /* Evaluation */
