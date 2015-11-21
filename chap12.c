@@ -17,13 +17,38 @@ typedef lval*(*lbuiltin)(lenv*, lval*);
 
 struct lval {
   int type;
+
+  /* Basic */
   long num;
   char* err;
   char* sym;
-  lbuiltin fun;
+
+  /* Function */
+  lbuiltin builtin;
+  lenv* env;
+  lval* formals;
+  lval* body;
+
+  /* Expression */
   int count;
   lval** cell;
 };
+
+lval* lval_lambda(lval* formals, lval* body) {
+    lval* v = malloc(sizeof(lval));
+    v->type = LVAL_FUN;
+
+    /* Set builtin to null */
+    v->builtin = NULL;
+
+    /* Build new environment */
+    v->env = lenv_new();
+
+    /* Set formals and body */
+    v->formals = formals;
+    v->body = body;
+    return v;
+}
 
 lval* lval_num(long x) {
   lval* v = malloc(sizeof(lval));
@@ -63,10 +88,10 @@ lval* lval_sym(char* s) {
   return v;
 }
 
-lval* lval_fun(lbuiltin func) {
+lval* lval_fun(lbuiltin builtin) {
   lval* v = malloc(sizeof(lval));
   v->type = LVAL_FUN;
-  v->fun = func;
+  v->fun = builtin;
   return v;
 }
 
@@ -90,9 +115,15 @@ void lval_del(lval* v) {
 
   switch (v->type) {
     case LVAL_NUM: break;
-    case LVAL_FUN: break;
     case LVAL_ERR: free(v->err); break;
     case LVAL_SYM: free(v->sym); break;
+    case LVAL_FUN:
+      if (!v->builtin) {
+        lval_del(v->env);
+        lval_del(v->formals);
+        lval_del(v->body);
+      }
+    break;
     case LVAL_QEXPR:
     case LVAL_SEXPR:
       for (int i = 0; i < v->count; i++) {
@@ -113,7 +144,6 @@ lval* lval_copy(lval* v) {
   switch (v->type) {
 
     /* Copy Functions and Numbers Directly */
-    case LVAL_FUN: x->fun = v->fun; break;
     case LVAL_NUM: x->num = v->num; break;
 
     /* Copy Strings using malloc and strcpy */
@@ -124,6 +154,17 @@ lval* lval_copy(lval* v) {
     case LVAL_SYM:
       x->sym = malloc(strlen(v->sym) + 1);
       strcpy(x->sym, v->sym); break;
+
+    case LVAL_FUN:
+      if (v->builtin) {
+        x->builtin = v->builtin;
+      } else {
+        x->builtin = NULL;
+        x->env = lenv_copy(v->env);
+        x->formals = lval_copy(v->formals);
+        x->body = lval_body(v->body);
+      }
+    break;
 
     /* Copy Lists by copying each sub-expression */
     case LVAL_SEXPR:
@@ -185,7 +226,14 @@ void lval_print_expr(lval* v, char open, char close) {
 
 void lval_print(lval* v) {
   switch (v->type) {
-    case LVAL_FUN:   printf("<function>"); break;
+    case LVAL_FUN:
+      if (v->builtin) {
+        printf("<builtin>");
+      } else {
+        printf("(\\ "); lval_print(v->formals);
+        putchar(' '); lval_print(v->body); putchar(')');
+      }
+    break;
     case LVAL_NUM:   printf("%li", v->num); break;
     case LVAL_ERR:   printf("Error: %s", v->err); break;
     case LVAL_SYM:   printf("%s", v->sym); break;
@@ -461,9 +509,9 @@ lval* builtin_exit(lenv* e, lval* a) {
     exit(result->num);
 }
 
-void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
+void lenv_add_builtin(lenv* e, char* name, lbuiltin builtin) {
   lval* k = lval_sym(name);
-  lval* v = lval_fun(func);
+  lval* v = lval_fun(builtin);
   lenv_put(e, k, v);
   lval_del(k); lval_del(v);
 }
@@ -616,28 +664,16 @@ int main(int argc, char** argv) {
   return 0;
 }
 
-/* VARIABLES
- * Lisp variables are immutable, meaning they cannot change. Variables are simply a way of naming values. They
- * let us assign a name to a value, and then let us get a copy of that value later on when we need it. To
- * allow for naming values we need to create a structure that stores the name and value of everything in our
- * program -- the environment. In our Lisp, when we re-assign a name to something new, we delete the old
- * association and create a new one. This gives the illusion that the thing assigned to that name has changed.
- * This is different to C where we can change the data pointer to by a pointer, without deleting and creating
- * a new one.
+/* FUNCTIONS 
+ * You can treat functions as black boxes, they take an input and produce some output. This is the idea of not
+ * having any side effects for your functions. That way you can combine and compose them together without
+ * having to worry about potential side effects.
  *
- * FUNCTION POINTERS
- * Introducing variables means symbols will no longer represent functions in our language, but rather they
- * will represent a name for us to look up in our environment. We need a new value to represent functions in
- * our language, which we can return once one of the builtin symbols is encountered. To create this new type
- * of lval, we are going to use something called a function pointer. Function pointers are a great feature of
- * C that lets you store and pass around pointers to functions. Doesn't make sense to edit the data pointed to
- * by these pointers. Use them to call the function they point to. Function pointer has type associated with
- * them.
- * typedef lval*(*lbuiltin)(lenv*, lval*);
- * To get an lval* we deference lbuiltin (function pointer) and call it with a lenv* and a lval*.
+ * You can also think of functions as partial computations. The functions can take some inputs before they are
+ * defined. The inputs for these partial functions are called unbound variables. The output of these partial
+ * computations is itself a variable with an unknown value. This output can be placed as input to a new
+ * function, and so one function relies on another.
  *
- * CYCLIC TYPES
- * lbuiltin references the lval type, but we want to make a lbuiltin field in our lval struct so we can create
- * function values. This leads to what is called a cyclic type dependency, where two types depend on each
- * other. Solution is to create a forward declaration.
-*/
+ * Our function will use 'def' to define the functions, the first argument is a list of symbols (formal
+ * arguments), acting as inputs to our partial computation. The second argument could be another list.
+ */
