@@ -803,3 +803,9 @@ int main(int argc, char** argv) {
  * Our function will use 'def' to define the functions, the first argument is a list of symbols (formal
  * arguments), acting as inputs to our partial computation. The second argument could be another list.
  */
+
+/* Extra Credit
+ * def {head-list} (\ {x} {head x})
+ * def {second} (\ {x} {head (tail x)})
+ * def {flip} (\ {f x y} {f y x})
+ * def {pass} (\ {f sec x y z} {sec z (f x y)})
