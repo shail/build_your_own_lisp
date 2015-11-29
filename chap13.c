@@ -953,3 +953,11 @@ int main(int argc, char** argv) {
 
   return 0;
 }
+
+/* Extra Credit
+ * Recursive Lisp function that returns the nth item of that list:
+ * (fun {nth n l} { if (== n 1) {head l} {(nth (- n 1) (tail l))} })
+ *
+ * Recurisve Lisp Function that returns 1 if an element is a member of a list, otherwise zero.
+ * (fun {elem l num} { if (== l {}) {0} {if (== num (eval (head l))) {1} {elem (tail l) num} }})
+ */
