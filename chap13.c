@@ -564,6 +564,31 @@ lval* builtin_neq(lenv* e, lval* a) {
   return builtin_eql(e, a, "!=");
 }
 
+lval* builtin_if(lenv* e, lval* a) {
+  LASSERT_NUM("if", a, 3);
+  LASSERT_TYPE("if", a, 0, LVAL_NUM);
+  LASSERT_TYPE("if", a, 1, LVAL_QEXPR);
+  LASSERT_TYPE("if", a, 2, LVAL_QEXPR);
+
+  /* Mark both expressions as evaluable */
+  lval* x;
+  a->cell[1]->type = LVAL_SEXPR;
+  a->cell[2]->type = LVAL_SEXPR;
+
+  if (a->cell[0]->num) {
+    /* If condition is true evaluate first expression */
+    x = lval_eval(e, lval_pop(a,1));
+  } else {
+    x = lval_eval(e, lval_pop(a,2)); 
+  }
+
+  lval_del(a);
+  return x;
+
+  lval_del(a);
+  return x;
+}
+
 lval* builtin_or(lenv* e, lval* a, char* op) {
   LASSERT_NUM(op, a, 2);
   LASSERT_TYPE(op, a, 0, LVAL_NUM);
@@ -674,6 +699,7 @@ void lenv_add_builtins(lenv* e) {
   lenv_add_builtin(e, "join", builtin_join);
 
   /* Mathematical Functions */
+  lenv_add_builtin(e, "if", builtin_if);
   lenv_add_builtin(e, "+", builtin_add);
   lenv_add_builtin(e, "-", builtin_sub);
   lenv_add_builtin(e, "*", builtin_mul);
