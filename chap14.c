@@ -8,6 +8,15 @@ struct lenv;
 typedef struct lval lval;
 typedef struct lenv lenv;
 
+mpc_parser_t* Number;
+mpc_parser_t* Symbol;
+mpc_parser_t* String;
+mpc_parser_t* Commen;
+mpc_parser_t* Sexpr ;
+mpc_parser_t* Qexpr ;
+mpc_parser_t* Expr  ;
+mpc_parser_t* Lispy ;
+
 /* Lisp Value */
 
 enum { LVAL_ERR, LVAL_NUM,   LVAL_SYM, LVAL_STR,
@@ -947,14 +956,14 @@ lval* lval_read(mpc_ast_t* t) {
 
 int main(int argc, char** argv) {
 
-  mpc_parser_t* Number  = mpc_new("number");
-  mpc_parser_t* Symbol  = mpc_new("symbol");
-  mpc_parser_t* String  = mpc_new("string");
-  mpc_parser_t* Comment = mpc_new("comment");
-  mpc_parser_t* Sexpr   = mpc_new("sexpr");
-  mpc_parser_t* Qexpr   = mpc_new("qexpr");
-  mpc_parser_t* Expr    = mpc_new("expr");
-  mpc_parser_t* Lispy   = mpc_new("lispy");
+  Number  = mpc_new("number");
+  Symbol  = mpc_new("symbol");
+  String  = mpc_new("string");
+  Comment = mpc_new("comment");
+  Sexpr   = mpc_new("sexpr");
+  Qexpr   = mpc_new("qexpr");
+  Expr    = mpc_new("expr");
+  Lispy   = mpc_new("lispy");
   
   mpca_lang(MPCA_LANG_DEFAULT,
     "                                              \
