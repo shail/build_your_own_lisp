@@ -225,6 +225,13 @@ lval* lval_join(lval* x, lval* y) {
   return x;
 }
 
+lval* lval_join_str(lval* x, lval* y) {
+  x->str = realloc(x->str, strlen(x->str) + strlen(y->str) + 1);
+  strcat(x->str, y->str);
+  free(y);
+  return x;
+}
+
 lval* lval_pop(lval* v, int i) {
   lval* x = v->cell[i];
   memmove(&v->cell[i], &v->cell[i+1],
@@ -496,20 +503,32 @@ lval* builtin_eval(lenv* e, lval* a) {
 }
 
 lval* builtin_join(lenv* e, lval* a) {
+  if (a->cell[0]->type == LVAL_STR) {
 
-  for (int i = 0; i < a->count; i++) {
-    LASSERT_TYPE("join", a, i, LVAL_QEXPR);
+    lval* x = lval_pop(a, 0);  
+
+    while (a->count) {
+      lval* y = lval_pop(a,0);
+      x = lval_join_str(x, y);
+    } 
+
+    lval_del(a);
+    return x;
+  } else {
+    for (int i = 0; i < a->count; i++) {
+      LASSERT_TYPE("join", a, i, LVAL_QEXPR);
+    }
+
+    lval* x = lval_pop(a, 0);
+
+    while (a->count) {
+      lval* y = lval_pop(a, 0);
+      x = lval_join(x, y);
+    }
+
+    lval_del(a);
+    return x;
   }
-
-  lval* x = lval_pop(a, 0);
-
-  while (a->count) {
-    lval* y = lval_pop(a, 0);
-    x = lval_join(x, y);
-  }
-
-  lval_del(a);
-  return x;
 }
 
 lval* builtin_op(lenv* e, lval* a, char* op) {
