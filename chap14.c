@@ -474,13 +474,25 @@ lval* builtin_list(lenv* e, lval* a) {
 }
 
 lval* builtin_head(lenv* e, lval* a) {
-  LASSERT_NUM("head", a, 1);
-  LASSERT_TYPE("head", a, 0, LVAL_QEXPR);
-  LASSERT_NOT_EMPTY("head", a, 0);
 
-  lval* v = lval_take(a, 0);
-  while (v->count > 1) { lval_del(lval_pop(v, 1)); }
-  return v;
+  if (a->cell[0]->type == LVAL_STR) {
+    char c = a->cell[0]->str[0];
+    char* ptr = malloc(2);
+    ptr[0] = c;
+    ptr[1] = '\0';
+    lval* v = lval_str(ptr); 
+    free(ptr);
+    lval_del(a);
+    return v;
+  } else {
+    LASSERT_NUM("head", a, 1);
+    LASSERT_TYPE("head", a, 0, LVAL_QEXPR);
+    LASSERT_NOT_EMPTY("head", a, 0);
+
+    lval* v = lval_take(a, 0);
+    while (v->count > 1) { lval_del(lval_pop(v, 1)); }
+    return v;
+  }
 }
 
 lval* builtin_tail(lenv* e, lval* a) {
