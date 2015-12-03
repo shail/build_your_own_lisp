@@ -90,6 +90,10 @@ lval* lval_sym(char* s) {
   return v;
 }
 
+lval* lval_ok(void) {
+    return lval_sym("ok");
+}
+
 lval* lval_builtin(lbuiltin func) {
   lval* v = malloc(sizeof(lval));
   v->type = LVAL_FUN;
@@ -847,6 +851,36 @@ lval* builtin_exit(lenv* e, lval* a) {
     exit(result->num);
 }
 
+lval* builtin_parse(lenv* e, lval* a) {
+    lval* x = NULL;
+
+    mpc_result_t r;
+
+    if (mpc_parse("<stdin>", a->cell[0]->str, Lispy, &r)) {
+        x = lval_read(r.output);
+    } else {
+        char* err_msg = mpc_err_string(r.error);
+        x = lval_err(err_msg);
+        mpc_err_delete(r.error);
+        free(err_msg);
+    }
+
+    lval_del(a);
+
+    return x;
+}
+
+lval* builtin_read(lenv* e, lval* a) {
+    lval* x = builtin_parse(e, a);
+    if (x->type == LVAL_ERR) {
+        return x;
+    }
+
+    x->type = LVAL_QEXPR;
+
+    return x;
+}
+
 void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
   lval* k = lval_sym(name);
   lval* v = lval_builtin(func);
@@ -887,6 +921,7 @@ void lenv_add_builtins(lenv* e) {
   lenv_add_builtin(e, "load", builtin_load);
   lenv_add_builtin(e, "error", builtin_error);
   lenv_add_builtin(e, "print", builtin_print);
+  lenv_add_builtin(e, "read", builtin_read);
 
   lenv_add_builtin(e, "env_list", builtin_list);
   lenv_add_builtin(e, "exit", builtin_exit);
