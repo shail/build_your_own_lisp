@@ -144,7 +144,6 @@
     {join (reverse (tail l)) (head l)}
 })
 
-; Fold Left
 (fun {foldl f z l} {
   if (== l nil) 
     {z}
